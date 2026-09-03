@@ -19,22 +19,40 @@ function layoutGraph(source: SkillNode[], edges: SkillEdge[]): { nodes: Position
   const parents = source.filter((node) => parentIds.includes(node.id as typeof parentIds[number]))
   const positioned: PositionedNode[] = [root]
   const domainGap = 260
-  const centers = { verbal: { x: root.x - domainGap, y: root.y }, quant: { x: root.x, y: root.y + domainGap }, reasoning: { x: root.x + domainGap, y: root.y }, literacy: { x: root.x, y: root.y - domainGap } }
+  const centers = { verbal: { x: 340, y: root.y }, quant: { x: root.x, y: 670 }, reasoning: { x: 860, y: root.y }, literacy: { x: root.x, y: 150 } }
   const childrenByParent = new Map<string, SkillNode[]>()
   edges.forEach((edge) => { const child = source.find((node) => node.id === edge.target); if (child) childrenByParent.set(edge.source, [...(childrenByParent.get(edge.source) ?? []), child]) })
-  const subtreeHeight = (node: SkillNode): number => { const children = childrenByParent.get(node.id) ?? []; return Math.max(74, children.length ? children.reduce((sum, child) => sum + subtreeHeight(child), 0) + (children.length - 1) * 24 : 74) }
   const placedIds = new Set<string>(['root', ...parents.map((parent) => parent.id)])
-  const placeBranch = (node: SkillNode, x: number, y: number, direction: string, depth: number) => {
+  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value))
+  const placeBranch = (node: SkillNode, x: number, y: number, direction: keyof typeof branchOrder, depth: number, bounds: { left: number; right: number; top: number; bottom: number }) => {
     if (placedIds.has(node.id)) return
     placedIds.add(node.id)
-    positioned.push({ ...node, x, y })
+    const safeX = clamp(x, bounds.left + 72, bounds.right - 72)
+    const safeY = clamp(y, bounds.top + 40, bounds.bottom - 40)
+    positioned.push({ ...node, x: safeX, y: safeY })
     const children = childrenByParent.get(node.id) ?? []
     if (!children.length) return
-    const total = children.reduce((sum, child) => sum + subtreeHeight(child), 0) + (children.length - 1) * 24
-    let cursor = y - total / 2
-    children.forEach((child) => { const height = subtreeHeight(child); const childY = cursor + height / 2; const childX = x + (direction === 'left' ? -220 : direction === 'right' ? 220 : 0); const nextY = direction === 'up' ? y - 150 - depth * 35 : direction === 'down' ? y + 150 + depth * 35 : childY; placeBranch(child, childX, nextY, direction, depth + 1); cursor += height + 24 })
+    const span = direction === 'left' || direction === 'right' ? bounds.bottom - bounds.top : bounds.right - bounds.left
+    const gap = Math.max(88, Math.min(150, span / Math.max(children.length, 1)))
+    const start = (children.length - 1) * gap / 2
+    children.forEach((child, index) => {
+      const cross = index * gap - start
+      const childX = direction === 'left' ? safeX - 170 : direction === 'right' ? safeX + 170 : safeX + cross
+      const childY = direction === 'up' ? safeY - 120 : direction === 'down' ? safeY + 120 : safeY + cross
+      placeBranch(child, childX, childY, direction, depth + 1, bounds)
+    })
   }
-  parents.forEach((parent) => { const center = centers[parent.id as keyof typeof centers]; positioned.push({ ...parent, x: center.x, y: center.y }); const branchChildren = childrenByParent.get(parent.id) ?? []; const direction = branchOrder[parent.id as keyof typeof branchOrder]; const total = branchChildren.reduce((sum, child) => sum + subtreeHeight(child), 0) + Math.max(0, branchChildren.length - 1) * 24; let cursor = center.y - total / 2; branchChildren.forEach((child) => { const height = subtreeHeight(child); placeBranch(child, center.x + (direction === 'left' ? -220 : direction === 'right' ? 220 : 0), direction === 'up' ? center.y - 150 : direction === 'down' ? center.y + 150 : cursor + height / 2, direction, 1); cursor += height + 24 }) })
+  parents.forEach((parent) => {
+    const center = centers[parent.id as keyof typeof centers]
+    positioned.push({ ...parent, x: center.x, y: center.y })
+    const direction = branchOrder[parent.id as keyof typeof branchOrder]
+    const bounds = direction === 'left' ? { left: 24, right: 470, top: 180, bottom: 640 } : direction === 'right' ? { left: 730, right: 1176, top: 180, bottom: 640 } : direction === 'up' ? { left: 380, right: 820, top: 24, bottom: 280 } : { left: 380, right: 820, top: 540, bottom: 976 }
+    const children = childrenByParent.get(parent.id) ?? []
+    const span = direction === 'left' || direction === 'right' ? bounds.bottom - bounds.top : bounds.right - bounds.left
+    const gap = Math.max(88, Math.min(150, span / Math.max(children.length, 1)))
+    const start = (children.length - 1) * gap / 2
+    children.forEach((child, index) => { const cross = index * gap - start; placeBranch(child, direction === 'left' ? center.x - 170 : direction === 'right' ? center.x + 170 : center.x + cross, direction === 'up' ? center.y - 120 : direction === 'down' ? center.y + 120 : center.y + cross, direction, 1, bounds) })
+  })
   const connections = edges.filter((edge) => positioned.some((node) => node.id === edge.source) && positioned.some((node) => node.id === edge.target))
   return { nodes: positioned, connections }
 }
