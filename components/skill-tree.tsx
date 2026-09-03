@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 
 type SkillStatus = 'mastered' | 'proficient' | 'learning' | 'needs' | 'assessed'
 type SkillType = 'Quantitative' | 'Verbal' | 'Reasoning' | 'Literacy'
-type UTBKDomain = 'Overall' | 'PPU' | 'PBM' | 'PK' | 'LBI' | 'LBE' | 'PM'
+type UTBKDomain = 'Overall' | 'PPU' | 'PBM' | 'PK' | 'PU' | 'LBI' | 'LBE' | 'PM'
 type SkillNode = { id: string; name: string; short?: string; status: SkillStatus; type: SkillType[]; progress: number; domains: UTBKDomain[]; description?: string; practice: string; usedIn: string; direction: string }
 type SkillEdge = { id: string; source: string; target: string }
 type PositionedNode = SkillNode & { x: number; y: number }
@@ -60,15 +60,18 @@ const nodes: SkillNode[] = [
   { id: 'inference', name: 'Inference', status: 'mastered', type: ['Literacy', 'Reasoning'], progress: 91, domains: ['PBM', 'LBI', 'LBE'], practice: '48 questions · 92% accuracy', usedIn: 'PBM · LBI · LBE', direction: 'Verbal skill' },
   { id: 'argument', name: 'Argument\nevaluation', status: 'learning', type: ['Literacy', 'Verbal', 'Reasoning'], progress: 64, domains: ['PBM', 'LBI'], practice: '32 questions · 71% accuracy', usedIn: 'PBM · LBI', direction: 'Verbal skill' },
   { id: 'makna-kata', name: 'Makna Kata', status: 'learning', type: ['Verbal'], progress: 70, domains: ['PBM', 'LBI'], practice: '42 questions · 76% accuracy', usedIn: 'PBM · LBI', direction: 'Verbal skill' },
-  ...(['leksikal', 'gramatikal', 'denotatif', 'konotatif'].map((id) => ({ id, name: id[0].toUpperCase() + id.slice(1), status: 'assessed' as SkillStatus, type: ['Verbal'] as SkillType[], progress: 0, domains: ['LBI'] as UTBKDomain[], practice: 'Not started', usedIn: 'LBI', direction: 'Makna Kata' }))),
+  { id: 'leksikal', name: 'Leksikal', status: 'assessed', type: ['Verbal'], progress: 72, domains: ['LBI'], practice: '12 questions · 78% accuracy', usedIn: 'LBI', direction: 'Makna Kata' },
   { id: 'leksikal', name: 'Leksikal', status: 'assessed', type: ['Verbal'], progress: 72, domains: ['LBI'], practice: '12 questions · 78% accuracy', usedIn: 'LBI', direction: 'Makna Kata' },
   { id: 'gramatikal', name: 'Gramatikal', status: 'learning', type: ['Verbal'], progress: 64, domains: ['LBI'], practice: '11 questions · 68% accuracy', usedIn: 'LBI', direction: 'Makna Kata' },
   { id: 'denotatif', name: 'Denotatif', status: 'proficient', type: ['Verbal'], progress: 82, domains: ['LBI'], practice: '10 questions · 84% accuracy', usedIn: 'LBI', direction: 'Makna Kata' },
   { id: 'konotatif', name: 'Konotatif', status: 'learning', type: ['Verbal'], progress: 58, domains: ['LBI'], practice: '9 questions · 62% accuracy', usedIn: 'LBI', direction: 'Makna Kata' },
   { id: 'pergeseran-makna', name: 'Pergeseran Makna', status: 'assessed', type: ['Verbal'], progress: 0, domains: ['LBI'], practice: 'Not started', usedIn: 'LBI', direction: 'Verbal skill' },
   { id: 'diksi', name: 'Diksi', status: 'learning', type: ['Verbal'], progress: 67, domains: ['LBI'], practice: '28 questions · 71% accuracy', usedIn: 'LBI', direction: 'Verbal skill' },
-  ...(['sinonim', 'antonim', 'ketepatan-diksi'].map((id) => ({ id, name: id === 'ketepatan-diksi' ? 'Ketepatan Diksi' : id[0].toUpperCase() + id.slice(1), status: 'assessed' as SkillStatus, type: ['Verbal'] as SkillType[], progress: 0, domains: ['LBI'] as UTBKDomain[], practice: 'Not started', usedIn: 'LBI', direction: 'Diksi' }))),
-  ...(['endosentrik', 'eksosentrik'].map((id) => ({ id, name: id[0].toUpperCase() + id.slice(1), status: 'assessed' as SkillStatus, type: ['Verbal'] as SkillType[], progress: 0, domains: ['LBI'] as UTBKDomain[], practice: 'Not started', usedIn: 'LBI', direction: 'Frasa' }))),
+  { id: 'sinonim', name: 'Sinonim', status: 'proficient', type: ['Verbal'], progress: 80, domains: ['LBI'], practice: '10 questions · 84% accuracy', usedIn: 'LBI', direction: 'Diksi' },
+  { id: 'antonim', name: 'Antonim', status: 'learning', type: ['Verbal'], progress: 61, domains: ['LBI'], practice: '9 questions · 66% accuracy', usedIn: 'LBI', direction: 'Diksi' },
+  { id: 'ketepatan-diksi', name: 'Ketepatan Diksi', status: 'learning', type: ['Verbal'], progress: 60, domains: ['LBI'], practice: '9 questions · 64% accuracy', usedIn: 'LBI', direction: 'Diksi' },
+  { id: 'endosentrik', name: 'Endosentrik', status: 'assessed', type: ['Verbal'], progress: 0, domains: ['LBI'], practice: 'Not started', usedIn: 'LBI', direction: 'Frasa' },
+  { id: 'eksosentrik', name: 'Eksosentrik', status: 'assessed', type: ['Verbal'], progress: 0, domains: ['LBI'], practice: 'Not started', usedIn: 'LBI', direction: 'Frasa' },
   { id: 'rujukan-kata', name: 'Rujukan Kata', status: 'assessed', type: ['Verbal'], progress: 0, domains: ['LBI'], practice: 'Not started', usedIn: 'LBI', direction: 'Verbal skill' },
   { id: 'frasa', name: 'Frasa', status: 'learning', type: ['Verbal'], progress: 63, domains: ['LBI'], practice: '18 questions · 69% accuracy', usedIn: 'LBI', direction: 'Verbal skill' },
   { id: 'klausa', name: 'Klausa', status: 'learning', type: ['Verbal'], progress: 55, domains: ['LBI'], practice: '16 questions · 61% accuracy', usedIn: 'LBI', direction: 'Verbal skill' },
@@ -100,7 +103,7 @@ const edges: SkillEdge[] = [
 const filters = ['Overall', 'PPU', 'PBM', 'PK', 'LBI', 'LBE', 'PM']
 const types = ['All Types', 'Quantitative', 'Verbal', 'Reasoning', 'Literacy']
 
-function NodeCard({ node, selected, onClick, recommended }: { node: SkillNode; selected: boolean; onClick: () => void; recommended: boolean }) {
+function NodeCard({ node, selected, onClick, recommended }: { node: PositionedNode; selected: boolean; onClick: () => void; recommended: boolean }) {
   const meta = statusMeta[node.status]
   const Icon = meta.icon
   return <button onClick={onClick} className={`skill-node node-${meta.color} ${node.id === 'root' ? 'root-node' : ['verbal', 'quant', 'reasoning', 'literacy'].includes(node.id) ? 'parent-node' : 'child-node'} ${selected ? 'selected' : ''} ${recommended ? 'recommended' : ''}`} style={{ left: node.x, top: node.y }} aria-label={node.id === 'root' ? 'View your learning profile' : `View ${node.name.replace('\n', ' ')}`}>
