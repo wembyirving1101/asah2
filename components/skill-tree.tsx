@@ -17,29 +17,25 @@ const nodeSize = { parent: 126, childWidth: 138, childHeight: 74, root: 180 }
 function layoutGraph(source: SkillNode[], edges: SkillEdge[]): { nodes: PositionedNode[]; connections: SkillEdge[] } {
   const root: PositionedNode = { ...source.find((node) => node.id === 'root')!, x: 600, y: 410 }
   const parents = source.filter((node) => parentIds.includes(node.id as typeof parentIds[number]))
-  const children = source.filter((node) => node.id !== 'root' && !parentIds.includes(node.id as typeof parentIds[number]))
   const positioned: PositionedNode[] = [root]
   const domainGap = 260
-  const centers = {
-    verbal: { x: root.x - domainGap, y: root.y },
-    quant: { x: root.x, y: root.y + domainGap },
-    reasoning: { x: root.x + domainGap, y: root.y },
-    literacy: { x: root.x, y: root.y - domainGap },
+  const centers = { verbal: { x: root.x - domainGap, y: root.y }, quant: { x: root.x, y: root.y + domainGap }, reasoning: { x: root.x + domainGap, y: root.y }, literacy: { x: root.x, y: root.y - domainGap } }
+  const childrenByParent = new Map<string, SkillNode[]>()
+  edges.forEach((edge) => { const child = source.find((node) => node.id === edge.target); if (child) childrenByParent.set(edge.source, [...(childrenByParent.get(edge.source) ?? []), child]) })
+  const subtreeHeight = (node: SkillNode): number => { const children = childrenByParent.get(node.id) ?? []; return Math.max(74, children.length ? children.reduce((sum, child) => sum + subtreeHeight(child), 0) + (children.length - 1) * 24 : 74) }
+  const placedIds = new Set<string>(['root', ...parents.map((parent) => parent.id)])
+  const placeBranch = (node: SkillNode, x: number, y: number, direction: string, depth: number) => {
+    if (placedIds.has(node.id)) return
+    placedIds.add(node.id)
+    positioned.push({ ...node, x, y })
+    const children = childrenByParent.get(node.id) ?? []
+    if (!children.length) return
+    const total = children.reduce((sum, child) => sum + subtreeHeight(child), 0) + (children.length - 1) * 24
+    let cursor = y - total / 2
+    children.forEach((child) => { const height = subtreeHeight(child); const childY = cursor + height / 2; const childX = x + (direction === 'left' ? -220 : direction === 'right' ? 220 : 0); const nextY = direction === 'up' ? y - 150 - depth * 35 : direction === 'down' ? y + 150 + depth * 35 : childY; placeBranch(child, childX, nextY, direction, depth + 1); cursor += height + 24 })
   }
-  parents.forEach((parent) => {
-    const center = centers[parent.id as keyof typeof centers]
-    positioned.push({ ...parent, x: center.x, y: center.y })
-    const branchChildren = children.filter((child) => edges.some((edge) => edge.source === parent.id && edge.target === child.id))
-    const direction = branchOrder[parent.id as keyof typeof branchOrder]
-    const availableSpan = direction === 'up' || direction === 'down' ? 520 : 400
-    const gap = branchChildren.length > 1 ? Math.min(180, availableSpan / (branchChildren.length - 1)) : 0
-    branchChildren.forEach((child, index) => {
-      const offset = (index - (branchChildren.length - 1) / 2) * gap
-      const point = direction === 'up' ? { x: center.x + offset, y: center.y - 220 } : direction === 'down' ? { x: center.x + offset, y: center.y + 130 } : direction === 'left' ? { x: center.x - 220, y: center.y + offset } : { x: center.x + 220, y: center.y + offset }
-      positioned.push({ ...child, x: point.x, y: point.y })
-    })
-  })
-  const connections: SkillEdge[] = edges.filter((edge) => positioned.some((node) => node.id === edge.source) && positioned.some((node) => node.id === edge.target))
+  parents.forEach((parent) => { const center = centers[parent.id as keyof typeof centers]; positioned.push({ ...parent, x: center.x, y: center.y }); const branchChildren = childrenByParent.get(parent.id) ?? []; const direction = branchOrder[parent.id as keyof typeof branchOrder]; const total = branchChildren.reduce((sum, child) => sum + subtreeHeight(child), 0) + Math.max(0, branchChildren.length - 1) * 24; let cursor = center.y - total / 2; branchChildren.forEach((child) => { const height = subtreeHeight(child); placeBranch(child, center.x + (direction === 'left' ? -220 : direction === 'right' ? 220 : 0), direction === 'up' ? center.y - 150 : direction === 'down' ? center.y + 150 : cursor + height / 2, direction, 1); cursor += height + 24 }) })
+  const connections = edges.filter((edge) => positioned.some((node) => node.id === edge.source) && positioned.some((node) => node.id === edge.target))
   return { nodes: positioned, connections }
 }
 
@@ -59,30 +55,7 @@ const nodes: SkillNode[] = [
   { id: 'literacy', name: 'Literasi', status: 'needs', type: ['Literacy', 'Verbal'], progress: 54, domains: ['LBI', 'LBE'], practice: '86 questions · 62% accuracy', usedIn: 'LBI · LBE', direction: 'Up branch' },
   { id: 'inference', name: 'Inference', status: 'mastered', type: ['Literacy', 'Reasoning'], progress: 91, domains: ['PBM', 'LBI', 'LBE'], practice: '48 questions · 92% accuracy', usedIn: 'PBM · LBI · LBE', direction: 'Verbal skill' },
   { id: 'argument', name: 'Argument\nevaluation', status: 'learning', type: ['Literacy', 'Verbal', 'Reasoning'], progress: 64, domains: ['PBM', 'LBI'], practice: '32 questions · 71% accuracy', usedIn: 'PBM · LBI', direction: 'Verbal skill' },
-  { id: 'makna-kata', name: 'Makna Kata', status: 'learning', type: ['Verbal'], progress: 70, domains: ['PBM', 'LBI'], practice: '42 questions · 76% accuracy', usedIn: 'PBM · LBI', direction: 'Verbal skill' },
-  { id: 'leksikal', name: 'Leksikal', status: 'assessed', type: ['Verbal'], progress: 72, domains: ['LBI'], practice: '12 questions · 78% accuracy', usedIn: 'LBI', direction: 'Makna Kata' },
-  { id: 'leksikal', name: 'Leksikal', status: 'assessed', type: ['Verbal'], progress: 72, domains: ['LBI'], practice: '12 questions · 78% accuracy', usedIn: 'LBI', direction: 'Makna Kata' },
-  { id: 'gramatikal', name: 'Gramatikal', status: 'learning', type: ['Verbal'], progress: 64, domains: ['LBI'], practice: '11 questions · 68% accuracy', usedIn: 'LBI', direction: 'Makna Kata' },
-  { id: 'denotatif', name: 'Denotatif', status: 'proficient', type: ['Verbal'], progress: 82, domains: ['LBI'], practice: '10 questions · 84% accuracy', usedIn: 'LBI', direction: 'Makna Kata' },
-  { id: 'konotatif', name: 'Konotatif', status: 'learning', type: ['Verbal'], progress: 58, domains: ['LBI'], practice: '9 questions · 62% accuracy', usedIn: 'LBI', direction: 'Makna Kata' },
-  { id: 'pergeseran-makna', name: 'Pergeseran Makna', status: 'assessed', type: ['Verbal'], progress: 0, domains: ['LBI'], practice: 'Not started', usedIn: 'LBI', direction: 'Verbal skill' },
-  { id: 'diksi', name: 'Diksi', status: 'learning', type: ['Verbal'], progress: 67, domains: ['LBI'], practice: '28 questions · 71% accuracy', usedIn: 'LBI', direction: 'Verbal skill' },
-  { id: 'sinonim', name: 'Sinonim', status: 'proficient', type: ['Verbal'], progress: 80, domains: ['LBI'], practice: '10 questions · 84% accuracy', usedIn: 'LBI', direction: 'Diksi' },
-  { id: 'antonim', name: 'Antonim', status: 'learning', type: ['Verbal'], progress: 61, domains: ['LBI'], practice: '9 questions · 66% accuracy', usedIn: 'LBI', direction: 'Diksi' },
-  { id: 'ketepatan-diksi', name: 'Ketepatan Diksi', status: 'learning', type: ['Verbal'], progress: 60, domains: ['LBI'], practice: '9 questions · 64% accuracy', usedIn: 'LBI', direction: 'Diksi' },
-  { id: 'endosentrik', name: 'Endosentrik', status: 'assessed', type: ['Verbal'], progress: 0, domains: ['LBI'], practice: 'Not started', usedIn: 'LBI', direction: 'Frasa' },
-  { id: 'eksosentrik', name: 'Eksosentrik', status: 'assessed', type: ['Verbal'], progress: 0, domains: ['LBI'], practice: 'Not started', usedIn: 'LBI', direction: 'Frasa' },
-  { id: 'rujukan-kata', name: 'Rujukan Kata', status: 'assessed', type: ['Verbal'], progress: 0, domains: ['LBI'], practice: 'Not started', usedIn: 'LBI', direction: 'Verbal skill' },
-  { id: 'frasa', name: 'Frasa', status: 'learning', type: ['Verbal'], progress: 63, domains: ['LBI'], practice: '18 questions · 69% accuracy', usedIn: 'LBI', direction: 'Verbal skill' },
-  { id: 'klausa', name: 'Klausa', status: 'learning', type: ['Verbal'], progress: 55, domains: ['LBI'], practice: '16 questions · 61% accuracy', usedIn: 'LBI', direction: 'Verbal skill' },
-  { id: 'struktur-kalimat', name: 'Struktur Kalimat', status: 'learning', type: ['Verbal'], progress: 59, domains: ['LBI'], practice: '22 questions · 65% accuracy', usedIn: 'LBI', direction: 'Verbal skill' },
-  { id: 'eyd', name: 'EYD', status: 'proficient', type: ['Verbal'], progress: 78, domains: ['LBI'], practice: '31 questions · 81% accuracy', usedIn: 'LBI', direction: 'Verbal skill' },
-  { id: 'konjungsi', name: 'Konjungsi', status: 'learning', type: ['Verbal'], progress: 65, domains: ['LBI'], practice: '14 questions · 70% accuracy', usedIn: 'LBI', direction: 'Verbal skill' },
-  { id: 'kalimat-efektif', name: 'Kalimat Efektif', status: 'learning', type: ['Verbal'], progress: 57, domains: ['LBI'], practice: '20 questions · 63% accuracy', usedIn: 'LBI', direction: 'Verbal skill' },
-  { id: 'ide-pokok', name: 'Ide Pokok', status: 'needs', type: ['Verbal'], progress: 52, domains: ['LBI'], practice: '15 questions · 59% accuracy', usedIn: 'LBI', direction: 'Verbal skill' },
-  { id: 'kepaduan-kalimat', name: 'Kepaduan Kalimat', status: 'assessed', type: ['Verbal'], progress: 0, domains: ['LBI'], practice: 'Not started', usedIn: 'LBI', direction: 'Kalimat Efektif' },
-  { id: 'koherensi-paragraf', name: 'Koherensi Paragraf', status: 'assessed', type: ['Verbal'], progress: 0, domains: ['LBI'], practice: 'Not started', usedIn: 'LBI', direction: 'Verbal skill' },
-  { id: 'paragraf', name: 'Paragraf Deduktif / Induktif', status: 'assessed', type: ['Verbal'], progress: 0, domains: ['LBI'], practice: 'Not started', usedIn: 'LBI', direction: 'Verbal skill' },
+  ...['Makna Kata', 'Frasa', 'EYD', 'Konjungsi', 'Pergeseran Makna', 'Diksi', 'Sinonim', 'Antonim', 'Ketepatan Diksi', 'Rujukan Kata', 'Klausa', 'Struktur Kalimat', 'Kalimat Tunggal', 'Kalimat Majemuk', 'Kalimat Aktif', 'Kalimat Pasif', 'Kalimat Efektif', 'Kepaduan Kalimat', 'Koherensi Paragraf', 'Ide Pokok', 'Paragraf Deduktif', 'Paragraf Induktif', 'Makna Leksikal', 'Makna Gramatikal', 'Makna Denotatif', 'Makna Konotatif', 'Endosentrik', 'Eksosentrik', 'Huruf Kapital', 'Huruf Miring', 'Imbuhan vs Kata Depan', 'Kata Baku', 'Tanda Baca'].map((name, index) => ({ id: name.toLowerCase().replaceAll(' ', '-'), name, status: (index % 3 === 0 ? 'proficient' : 'assessed') as SkillStatus, type: ['Verbal'] as SkillType[], progress: index % 3 === 0 ? 72 : 0, domains: ['LBI'] as UTBKDomain[], practice: index % 3 === 0 ? '20 questions · 78% accuracy' : 'Not started', usedIn: 'LBI', direction: 'Verbal skill' })),
   { id: 'equations', name: 'Number', status: 'needs', type: ['Quantitative'], progress: 48, domains: ['PK', 'PM'], practice: '57 questions · 55% accuracy', usedIn: 'PK · PM', direction: 'Quant skill' },
   { id: 'data', name: 'Geometri', status: 'assessed', type: ['Quantitative', 'Reasoning'], progress: 0, domains: ['PK', 'PM', 'PU'], practice: '39 questions · 73% accuracy', usedIn: 'PK · PM · PU', direction: 'Quant skill' },
   { id: 'patterns', name: 'Pattern\nrecognition', status: 'proficient', type: ['Reasoning'], progress: 83, domains: ['PU', 'PM'], practice: '41 questions · 86% accuracy', usedIn: 'PU · PM', direction: 'Reasoning skill' },
@@ -93,8 +66,7 @@ const nodes: SkillNode[] = [
 const edges: SkillEdge[] = [
   ...parentIds.map((id) => ({ id: `edge-root-${id}`, source: 'root', target: id })),
   { id: 'edge-verbal-inference', source: 'verbal', target: 'inference' }, { id: 'edge-verbal-argument', source: 'verbal', target: 'argument' },
-  { id: 'edge-verbal-makna-kata', source: 'verbal', target: 'makna-kata' }, { id: 'edge-verbal-pergeseran-makna', source: 'verbal', target: 'pergeseran-makna' }, { id: 'edge-verbal-diksi', source: 'verbal', target: 'diksi' }, { id: 'edge-verbal-rujukan-kata', source: 'verbal', target: 'rujukan-kata' }, { id: 'edge-verbal-frasa', source: 'verbal', target: 'frasa' }, { id: 'edge-verbal-klausa', source: 'verbal', target: 'klausa' }, { id: 'edge-verbal-struktur-kalimat', source: 'verbal', target: 'struktur-kalimat' }, { id: 'edge-verbal-eyd', source: 'verbal', target: 'eyd' }, { id: 'edge-verbal-konjungsi', source: 'verbal', target: 'konjungsi' }, { id: 'edge-verbal-kalimat-efektif', source: 'verbal', target: 'kalimat-efektif' }, { id: 'edge-verbal-ide-pokok', source: 'verbal', target: 'ide-pokok' }, { id: 'edge-verbal-koherensi-paragraf', source: 'verbal', target: 'koherensi-paragraf' }, { id: 'edge-verbal-paragraf', source: 'verbal', target: 'paragraf' },
-  { id: 'edge-makna-leksikal', source: 'makna-kata', target: 'leksikal' }, { id: 'edge-makna-gramatikal', source: 'makna-kata', target: 'gramatikal' }, { id: 'edge-makna-denotatif', source: 'makna-kata', target: 'denotatif' }, { id: 'edge-makna-konotatif', source: 'makna-kata', target: 'konotatif' }, { id: 'edge-diksi-sinonim', source: 'diksi', target: 'sinonim' }, { id: 'edge-diksi-antonim', source: 'diksi', target: 'antonim' }, { id: 'edge-diksi-ketepatan', source: 'diksi', target: 'ketepatan-diksi' }, { id: 'edge-frasa-endosentrik', source: 'frasa', target: 'endosentrik' }, { id: 'edge-frasa-eksosentrik', source: 'frasa', target: 'eksosentrik' }, { id: 'edge-kalimat-kepaduan', source: 'kalimat-efektif', target: 'kepaduan-kalimat' }, { id: 'edge-koherensi-ide', source: 'koherensi-paragraf', target: 'ide-pokok' },
+  ...[['verbal', 'makna-kata'], ['verbal', 'frasa'], ['verbal', 'eyd'], ['verbal', 'konjungsi'], ['makna-kata', 'makna-leksikal'], ['makna-kata', 'makna-gramatikal'], ['makna-kata', 'makna-denotatif'], ['makna-kata', 'makna-konotatif'], ['makna-kata', 'pergeseran-makna'], ['makna-kata', 'diksi'], ['diksi', 'sinonim'], ['diksi', 'antonim'], ['diksi', 'ketepatan-diksi'], ['diksi', 'rujukan-kata'], ['frasa', 'endosentrik'], ['frasa', 'eksosentrik'], ['frasa', 'klausa'], ['klausa', 'struktur-kalimat'], ['struktur-kalimat', 'kalimat-tunggal'], ['struktur-kalimat', 'kalimat-majemuk'], ['struktur-kalimat', 'kalimat-aktif'], ['struktur-kalimat', 'kalimat-pasif'], ['eyd', 'kalimat-efektif'], ['diksi', 'kalimat-efektif'], ['struktur-kalimat', 'kalimat-efektif'], ['konjungsi', 'kalimat-efektif'], ['kalimat-efektif', 'kepaduan-kalimat'], ['kepaduan-kalimat', 'koherensi-paragraf'], ['ide-pokok', 'paragraf-deduktif'], ['ide-pokok', 'paragraf-induktif'], ['koherensi-paragraf', 'paragraf-deduktif'], ['koherensi-paragraf', 'paragraf-induktif'], ['eyd', 'huruf-kapital'], ['eyd', 'huruf-miring'], ['eyd', 'imbuhan-vs-kata-depan'], ['eyd', 'kata-baku'], ['eyd', 'tanda-baca']].map(([source, target], index) => ({ id: `edge-verbal-${index}`, source, target })),
   { id: 'edge-quant-equations', source: 'quant', target: 'equations' }, { id: 'edge-quant-data', source: 'quant', target: 'data' },
   { id: 'edge-reasoning-patterns', source: 'reasoning', target: 'patterns' }, { id: 'edge-literacy-main-idea', source: 'literacy', target: 'main-idea' }, { id: 'edge-literacy-integration', source: 'literacy', target: 'integration' },
 ]
