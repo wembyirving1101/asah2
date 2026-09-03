@@ -11,7 +11,7 @@ type SkillNode = { id: string; name: string; short?: string; status: SkillStatus
 type SkillEdge = { id: string; source: string; target: string }
 type PositionedNode = SkillNode & { x: number; y: number }
 const parentIds = ['verbal', 'quant', 'reasoning', 'literacy'] as const
-const branchOrder = { verbal: 'up', quant: 'right', reasoning: 'left', literacy: 'down' } as const
+const branchOrder = { verbal: 'left', quant: 'down', reasoning: 'right', literacy: 'up' } as const
 const nodeSize = { parent: 126, childWidth: 138, childHeight: 74, root: 180 }
 
 function layoutGraph(source: SkillNode[], edges: SkillEdge[]): { nodes: PositionedNode[]; connections: SkillEdge[] } {
@@ -21,10 +21,10 @@ function layoutGraph(source: SkillNode[], edges: SkillEdge[]): { nodes: Position
   const positioned: PositionedNode[] = [root]
   const domainGap = 260
   const centers = {
-    verbal: { x: root.x, y: root.y - domainGap },
-    quant: { x: root.x + domainGap, y: root.y },
-    reasoning: { x: root.x - domainGap, y: root.y },
-    literacy: { x: root.x, y: root.y + domainGap },
+    verbal: { x: root.x - domainGap, y: root.y },
+    quant: { x: root.x, y: root.y + domainGap },
+    reasoning: { x: root.x + domainGap, y: root.y },
+    literacy: { x: root.x, y: root.y - domainGap },
   }
   parents.forEach((parent) => {
     const center = centers[parent.id as keyof typeof centers]
@@ -53,10 +53,10 @@ const statusMeta: Record<SkillStatus, { label: string; color: string; icon: type
 
 const nodes: SkillNode[] = [
   { id: 'root', name: 'UTBK CORE', status: 'mastered', type: ['Reasoning'], progress: 76, domains: ['Overall'], practice: '298 questions · 84% accuracy', usedIn: 'All domains', direction: 'Your foundation' },
-  { id: 'verbal', name: 'Verbal', status: 'proficient', type: ['Verbal', 'Literacy'], progress: 81, domains: ['PBM', 'LBI', 'LBE'], practice: '74 questions · 79% accuracy', usedIn: 'PBM · LBI · LBE', direction: 'Up branch' },
-  { id: 'quant', name: 'Kuantitatif', status: 'learning', type: ['Quantitative', 'Reasoning'], progress: 68, domains: ['PK', 'PM', 'PU'], practice: '143 questions · 78% accuracy', usedIn: 'PK · PM · PU', direction: 'Right branch' },
-  { id: 'reasoning', name: 'Penalaran', status: 'proficient', type: ['Reasoning'], progress: 86, domains: ['PU', 'PM'], practice: '91 questions · 88% accuracy', usedIn: 'PU · PM', direction: 'Left branch' },
-  { id: 'literacy', name: 'Literasi', status: 'needs', type: ['Literacy', 'Verbal'], progress: 54, domains: ['LBI', 'LBE'], practice: '86 questions · 62% accuracy', usedIn: 'LBI · LBE', direction: 'Down branch' },
+  { id: 'verbal', name: 'Verbal', status: 'proficient', type: ['Verbal', 'Literacy'], progress: 81, domains: ['PBM', 'LBI', 'LBE'], practice: '74 questions · 79% accuracy', usedIn: 'PBM · LBI · LBE', direction: 'Left branch' },
+  { id: 'quant', name: 'Kuantitatif', status: 'learning', type: ['Quantitative', 'Reasoning'], progress: 68, domains: ['PK', 'PM', 'PU'], practice: '143 questions · 78% accuracy', usedIn: 'PK · PM · PU', direction: 'Down branch' },
+  { id: 'reasoning', name: 'Penalaran', status: 'proficient', type: ['Reasoning'], progress: 86, domains: ['PU', 'PM'], practice: '91 questions · 88% accuracy', usedIn: 'PU · PM', direction: 'Right branch' },
+  { id: 'literacy', name: 'Literasi', status: 'needs', type: ['Literacy', 'Verbal'], progress: 54, domains: ['LBI', 'LBE'], practice: '86 questions · 62% accuracy', usedIn: 'LBI · LBE', direction: 'Up branch' },
   { id: 'inference', name: 'Inference', status: 'mastered', type: ['Literacy', 'Reasoning'], progress: 91, domains: ['PBM', 'LBI', 'LBE'], practice: '48 questions · 92% accuracy', usedIn: 'PBM · LBI · LBE', direction: 'Verbal skill' },
   { id: 'argument', name: 'Argument\nevaluation', status: 'learning', type: ['Literacy', 'Verbal', 'Reasoning'], progress: 64, domains: ['PBM', 'LBI'], practice: '32 questions · 71% accuracy', usedIn: 'PBM · LBI', direction: 'Verbal skill' },
   { id: 'equations', name: 'Number', status: 'needs', type: ['Quantitative'], progress: 48, domains: ['PK', 'PM'], practice: '57 questions · 55% accuracy', usedIn: 'PK · PM', direction: 'Quant skill' },
@@ -111,7 +111,7 @@ export function SkillTreePage() {
         <div className="tree-viewport" onPointerDown={(e) => setDrag({ x: e.clientX - offset.x, y: e.clientY - offset.y })} onPointerMove={(e) => drag && setOffset({ x: e.clientX - drag.x, y: e.clientY - drag.y })} onPointerUp={() => setDrag(null)} onPointerLeave={() => setDrag(null)}>
           <div className="grid-fade" /><div className="tree-canvas" style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}>
             <svg className="connections" viewBox="0 0 1200 1000" aria-hidden="true">{graph.connections.map((edge) => { const { source: from, target: to } = edge; const a = graph.nodes.find((n) => n.id === from)!; const b = graph.nodes.find((n) => n.id === to)!; const active = visible.has(from) && visible.has(to); const isParentChild = parentIds.includes(from as typeof parentIds[number]); const direction = isParentChild ? branchOrder[from as keyof typeof branchOrder] : ''; const parentRadius = 63; const childHalfW = 69; const childHalfH = 37; const rootRadius = 90; let path = ''; if (from === 'root') { const side = Math.abs(b.x - a.x) > Math.abs(b.y - a.y); if (side) { const rootEdge = a.x < b.x ? a.x + rootRadius : a.x - rootRadius; const parentEdge = b.x > a.x ? b.x - parentRadius : b.x + parentRadius; path = `M ${rootEdge} ${a.y} H ${parentEdge}`; } else { const rootEdge = a.y < b.y ? a.y + rootRadius : a.y - rootRadius; const parentEdge = b.y > a.y ? b.y - parentRadius : b.y + parentRadius; path = `M ${a.x} ${rootEdge} V ${parentEdge}`; } } else if (direction === 'up' || direction === 'down') { const isUpward = direction === 'up'; const parentEdge = a.y + (isUpward ? -parentRadius : parentRadius); const childEdge = b.y + (isUpward ? childHalfH : -childHalfH); const railY = parentEdge + (isUpward ? -46 : 46); path = `M ${a.x} ${parentEdge} V ${railY} H ${b.x} V ${childEdge}`; } else { const parentEdge = a.x + (direction === 'right' ? parentRadius : -parentRadius); const childEdge = b.x + (direction === 'right' ? -childHalfW : childHalfW); const railX = parentEdge + (direction === 'right' ? 46 : -46); path = `M ${parentEdge} ${a.y} H ${railX} V ${b.y} H ${childEdge}`; } return <path key={`${from}-${to}`} className={`${active ? 'path-active' : 'path-muted'} ${recommended && (from === 'quant' || to === 'equations') ? 'path-recommended' : ''}`} d={path} /> })}</svg>
-            <div className="root-orbit" /><div className="direction direction-up"><ArrowUp /> VERBAL</div><div className="direction direction-right"><ArrowRight /> QUANTITATIVE</div><div className="direction direction-left"><ArrowLeft /> REASONING</div><div className="direction direction-down"><ArrowDown /> LITERASI</div>
+            <div className="root-orbit" /><div className="direction direction-up"><ArrowUp /> LITERASI</div><div className="direction direction-right"><ArrowRight /> PENALARAN</div><div className="direction direction-left"><ArrowLeft /> VERBAL</div><div className="direction direction-down"><ArrowDown /> KUANTITATIF</div>
             {filteredNodes.map((node) => <NodeCard key={node.id} node={node} selected={selected?.id === node.id} onClick={() => setSelected(node)} recommended={recommended && ['quant', 'equations', 'data'].includes(node.id)} />)}
           </div>
           <div className="canvas-hint"><Move /> Drag to explore</div><div className="canvas-controls"><Button variant="outline" size="icon" onClick={() => updateZoom(0.1)} aria-label="Zoom in"><Plus /></Button><span>{Math.round(scale * 100)}%</span><Button variant="outline" size="icon" onClick={() => updateZoom(-0.1)} aria-label="Zoom out"><Minus /></Button><Button variant="outline" size="icon" onClick={resetView} aria-label="Center tree"><Crosshair /></Button></div>
